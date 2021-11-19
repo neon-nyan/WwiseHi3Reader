@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -8,9 +9,9 @@ namespace WwiseHi3Reader
     {
         public SongLibrary()
         {
-            if (File.Exists(@".\Library.json"))
+            if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Library.json")))
             {
-                string libraryValue = File.ReadAllText(@".\Library.json");
+                string libraryValue = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Library.json"));
                 SongLibraryDictionary = JsonConvert.DeserializeObject<Dictionary<uint, SongLibraryMetadata>>(libraryValue);
             }
             else

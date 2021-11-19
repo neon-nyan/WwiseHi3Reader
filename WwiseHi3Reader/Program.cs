@@ -85,16 +85,6 @@ namespace WwiseHi3Reader
                 }
                 else
                 {
-                    if (!File.Exists("bass.dll"))
-                    {
-                        Console.WriteLine(@"bass.dll is missing!
-This library (.dll) is required to use Audio Player feature!
-
-Press enter to quit...");
-                        Console.ReadLine();
-                        return;
-                    }
-
                     if (!string.IsNullOrEmpty(Path.GetExtension(args[0])))
                         FileList = new string[] { args[0] };
                     else
@@ -128,19 +118,19 @@ Press enter to quit...");
             {
                 Console.WriteLine(@"Honkai Impact 3's Wwise Audio Player by neon-nyan
 Usage:
-    WwiseHi3Reader.exe <path-of-the-game> <start-number-of-track>
+    WwiseHi3Reader <path-of-the-game> <start-number-of-track>
 Or:
-    WwiseHi3Reader.exe <path-of-the-game>
+    WwiseHi3Reader <path-of-the-game>
 Or With Loop for One Track
-    WwiseHi3Reader.exe <path-of-the-game> loop 
+    WwiseHi3Reader <path-of-the-game> loop 
 Or With Loop for One Track and start for specific Track Number
-    WwiseHi3Reader.exe <path-of-the-game> loop <number-of-track>
+    WwiseHi3Reader <path-of-the-game> loop <number-of-track>
     
 For Listing the Available Tracks Only:
-    WwiseHi3Reader.exe view <path-of-the-game>
+    WwiseHi3Reader view <path-of-the-game>
     
 For Converting Tracks to OGG Vorbis:
-    WwiseHi3Reader.exe convert <path-of-the-game> <path-of-the-output>
+    WwiseHi3Reader convert <path-of-the-game> <path-of-the-output>
 
 This program is using couple of Projects below:
  - ManagedBass (Un4Seen BASS Library Wrapper for .NET) by Mathew Sachin - For BASS Library Wrapper

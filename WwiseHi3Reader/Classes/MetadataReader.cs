@@ -36,20 +36,6 @@ namespace WwiseHi3Reader
 
         uint soundFilePerFileCount;
 
-        /*
-        public WwiseHi3Reader(string pckPath, bool skipSoundBank = true)
-        {
-            filename = Path.GetFileNameWithoutExtension(pckPath);
-            binaryReader = new BinaryReader(new FileStream(pckPath, FileMode.Open, FileAccess.Read));
-
-            // Initial list of Folders
-            _folders = new List<FolderProp>();
-            ReadHeader(skipSoundBank);
-
-            FileList = soundFileList;
-        }
-        */
-
         public void Read(string pckPath, bool skipSoundBank = true, bool quiet = false)
         {
             this.quiet = quiet;

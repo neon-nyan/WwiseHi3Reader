@@ -157,7 +157,7 @@ namespace WwiseHi3Reader
             {
                 currentPos = TimeSpan.FromSeconds(Bass.ChannelBytes2Seconds(playerPtr, Bass.ChannelGetPosition(playerPtr)));
                 Console.Write($"\r{currentPos} - {fileLength} | CPU Usage: {Math.Round(Bass.CPUUsage, 3)}%");
-                Thread.Sleep(33);
+                Thread.Sleep(100);
             }
 
             Console.WriteLine();
