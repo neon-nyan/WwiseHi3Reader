@@ -1,0 +1,3 @@
+[submodule "WEMSharp"]
+	path = WEMSharp
+	url = https://github.com/neon-nyan/WEMSharp
