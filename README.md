@@ -22,9 +22,9 @@ For Converting Tracks to OGG Vorbis:
     WwiseHi3Reader convert <path-of-the-game/single-pck-file> <path-of-the-output>
 
 This program is using couple of Projects below:
- - ManagedBass (Un4Seen BASS Library Wrapper for .NET) by Mathew Sachin - For BASS Library Wrapper
- - BASS (Audio Library) by Un4Seen - For Audio Player
- - WEMSharp by Crauzer - For Audiokinetic Wwise WEM Stream to OGG Vorbis Conversion.
+ - [**ManagedBass (Un4Seen BASS Library Wrapper for .NET)**](https://github.com/ManagedBass/ManagedBass) by Mathew Sachin - For BASS Library Wrapper
+ - [**BASS (Audio Library)**](https://www.un4seen.com) by Un4Seen - For Audio Player
+ - [**WEMSharp**](https://github.com/Crauzer/WEMSharp) by Crauzer - For Audiokinetic Wwise WEM Stream to OGG Vorbis Conversion.
 
 Player Shortcut:
 - Arrow Left Key     : Go to the Previous Track
