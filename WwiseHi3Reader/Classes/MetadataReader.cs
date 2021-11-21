@@ -68,12 +68,15 @@ namespace WwiseHi3Reader
         {
             try
             {
-                SongLibraryMetadata metadata = new SongLibraryMetadata();
-                metadata = songLibrary.SongLibraryDictionary[fileProp.id];
+                SongLibraryMetadata metadata = GetTrackInfo(fileProp);
                 Console.WriteLine($"\u2514\u2500 Title: {metadata.titleName} by {metadata.artistName}");
             }
             catch (KeyNotFoundException) { return; }
         }
+
+        public bool IsTitleByIDExist(in SoundFileProp fileProp) => songLibrary.SongLibraryDictionary.ContainsKey(fileProp.id);
+
+        public SongLibraryMetadata GetTrackInfo(in SoundFileProp fileProp) => songLibrary.SongLibraryDictionary[fileProp.id];
 
         public void Read(string[] pckPaths, bool skipSoundBank = true, bool quiet = false)
         {
@@ -94,7 +97,7 @@ namespace WwiseHi3Reader
             binaryReader.BaseStream.Seek(0x8, 0); // Seek 0x8
 
             if (binaryReader.ReadUInt32() != 1)
-                throw new FormatException($"Honkai Impact 3 PCK must be in Little-Endian format. Big-Endian format isn't supported.");
+                throw new FormatException($"PCK must be in Little-Endian format. Big-Endian format isn't supported.");
 
             binaryReader.BaseStream.Seek(0x4, 0); // Seek again with 0x4
 

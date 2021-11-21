@@ -38,8 +38,7 @@ namespace WwiseHi3Reader
                     reader.FilterFileByFolder("sfx");
                     reader.FilterHighFreqOnly();
 
-                    string outputFolder = args[2];
-                    string outputPath;
+                    string outputFolder = args[2], outputPath, filename;
 
                     int i = 0;
 
@@ -53,10 +52,20 @@ namespace WwiseHi3Reader
                         if (!Directory.Exists(outputPath))
                             Directory.CreateDirectory(outputPath);
 
-                        Console.Write($"Converting Track: {i}/{reader.FileList.Count} {Path.Combine(file.relativePath, $"{file.id}.ogg")}...");
+                        if (reader.IsTitleByIDExist(file))
+                        {
+                            SongLibraryMetadata trackMetadata = reader.GetTrackInfo(file);
+                            filename = $"{trackMetadata.artistName} - {trackMetadata.titleName}";
+                        }
+                        else
+                        {
+                            filename = $"{file.id}";
+                        }
+
+                        Console.Write($"Converting Track: {i}/{reader.FileList.Count} {Path.Combine(file.relativePath, $"{filename}.ogg")}...");
                         rawStream = new MemoryStream();
 
-                        outputStream = new FileInfo(Path.Combine(outputPath, $"{file.id}.ogg"));
+                        outputStream = new FileInfo(Path.Combine(outputPath, $"{filename}.ogg"));
 
                         if (!outputStream.Exists)
                         {
