@@ -11,7 +11,7 @@ Or Play Audio Files Directly but Start from certain Track
 Or With Loop for One Track
 
     WwiseHi3Reader <path-of-the-game/single-pck-file> loop
-Or With Loop for One Track and start for specific Track Number
+Or With Loop for One Track and start from specific Track Number
 
     WwiseHi3Reader <path-of-the-game/single-pck-file> loop <number-of-track>
 For Listing Available Tracks Only:
