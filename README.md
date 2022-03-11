@@ -14,7 +14,7 @@ Or With Loop for One Track
 Or With Loop for One Track and start for specific Track Number
 
     WwiseHi3Reader <path-of-the-game/single-pck-file> loop <number-of-track>
-For Listing the Available Tracks Only:
+For Listing Available Tracks Only:
 
     WwiseHi3Reader view <path-of-the-game/single-pck-file>
 For Converting Tracks to OGG Vorbis:
@@ -27,7 +27,7 @@ This program is using couple of Projects below:
  - [**WEMSharp**](https://github.com/Crauzer/WEMSharp) by Crauzer - For Audiokinetic Wwise WEM Stream to OGG Vorbis Conversion.
 
 Player Shortcut:
-- Arrow Left Key     : Go to the Previous Track
-- Arrow Right Key    : Go to the Next Track
+- Arrow Left Key     : Go to Previous Track
+- Arrow Right Key    : Go to Next Track
 - q                  : Exit from Program
 - Space              : Play/Pause
