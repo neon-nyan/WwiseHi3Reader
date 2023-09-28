@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using WEMSharp;
 
 using ManagedBass;
-
+using BnkExtractor.Revorb;
 
 namespace WwiseHi3Reader
 {
@@ -68,21 +68,21 @@ namespace WwiseHi3Reader
         public void PlayAllStreamStartFromID(int searchID, bool loopAll = false)
         {
             bool searchFinished = false;
-            playerTotalTrack = FileList.Count;
+            playerTotalTrack = soundFileList.Count;
             Console.Write($"Finding Track with ID: {searchID}...");
             for (; playerCurTrack < playerTotalTrack + 1; playerCurTrack++)
             {
                 if (searchFinished)
                 {
-                    PlayStream(FileList[playerCurTrack - 1]);
+                    PlayStream(soundFileList[playerCurTrack - 1]);
                 }
                 else
                 {
-                    if (FileList[playerCurTrack - 1].id == (uint)searchID)
+                    if (soundFileList[playerCurTrack - 1].id == (uint)searchID)
                     {
-                        Console.WriteLine($"\b\b\b Found at {FileList[playerCurTrack - 1].relativePath} on Offset: {FileList[playerCurTrack - 1].fileOffset}, Size: {FileList[playerCurTrack - 1].fileSize} bytes");
+                        Console.WriteLine($"\b\b\b Found at {soundFileList[playerCurTrack - 1].relativePath} on Offset: {soundFileList[playerCurTrack - 1].fileOffset}, Size: {soundFileList[playerCurTrack - 1].fileSize} bytes");
                         searchFinished = true;
-                        PlayStream(FileList[playerCurTrack - 1]);
+                        PlayStream(soundFileList[playerCurTrack - 1]);
                     }
                 }
             }
@@ -106,10 +106,10 @@ namespace WwiseHi3Reader
 
         void PlayAllStream(int startOnTrack)
         {
-            playerTotalTrack = FileList.Count;
+            playerTotalTrack = soundFileList.Count;
             for (playerCurTrack = startOnTrack; playerCurTrack < playerTotalTrack + 1; playerCurTrack++)
             {
-                PlayStream(FileList[playerCurTrack - 1]);
+                PlayStream(soundFileList[playerCurTrack - 1]);
             }
         }
 
@@ -157,7 +157,7 @@ namespace WwiseHi3Reader
             {
                 currentPos = TimeSpan.FromSeconds(Bass.ChannelBytes2Seconds(playerPtr, Bass.ChannelGetPosition(playerPtr)));
                 Console.Write($"\r{currentPos} - {fileLength} | CPU Usage: {Math.Round(Bass.CPUUsage, 3)}%");
-                Thread.Sleep(100);
+                Thread.Sleep(33);
             }
 
             Console.WriteLine();
@@ -262,18 +262,21 @@ namespace WwiseHi3Reader
 
         void InitializeConvertedStream(in SoundFileProp fileProp)
         {
-            rawStream = new MemoryStream();
             outputStream = new MemoryStream();
 
-            GetStream(fileProp, rawStream);
+            using (MemoryStream outputRawStream = new MemoryStream())
+            using (rawStream = new MemoryStream())
+            {
+                GetStream(fileProp, rawStream);
 
-            WEMFile _wemReader = new WEMFile(rawStream);
-            _wemReader.GenerateOGG(outputStream, false, false);
+                WEMFile _wemReader = new WEMFile(rawStream);
+                _wemReader.GenerateOGG(outputRawStream, false, false);
+                outputRawStream.Position = 0;
+                RevorbSharp.Convert(outputRawStream, outputStream);
+                _wemReader = null;
 
-            rawStream.Dispose();
-            _wemReader = null;
-
-            outputStream.Position = 0;
+                outputStream.Position = 0;
+            }
         }
 
         SoundFileProp ReadSoundFileRIFFMetadata(SoundFileProp data)

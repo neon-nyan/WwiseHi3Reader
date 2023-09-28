@@ -1,126 +1,233 @@
-﻿using System;
+﻿using BnkExtractor.Revorb;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using WEMSharp;
 
 namespace WwiseHi3Reader
 {
     public class WwiseHi3ReaderMain
     {
+        static string[] suppExt = new string[] { "pck" };
+
+        public static void LoadAndCompareNewer(string[] args, out WwiseHi3Reader FileReaderOld, out WwiseHi3Reader FileReaderNew)
+        {
+            FileReaderOld = new();
+            FileReaderNew = new();
+            IEnumerable<string> FileListOld;
+            IEnumerable<string> FileListNew;
+
+            FileListOld = Directory.EnumerateFiles(args[1].Replace("\n", "\\n"), "*.pck", SearchOption.AllDirectories);
+            FileListNew = Directory.EnumerateFiles(args[2].Replace("\n", "\\n"), "*.pck", SearchOption.AllDirectories);
+
+            FileReaderOld.ReadEnumerate(FileListOld);
+            FileReaderNew.ReadEnumerate(FileListNew);
+
+            FileReaderNew.CompareAndEliminateOldFile(FileReaderOld);
+        }
+
+        public static void StartConversion(WwiseHi3Reader InputReader, string OutputDir, bool isRAW = false)
+        {
+            string outputPath, filename;
+            OutputDir = OutputDir.Replace("\n", "\\n");
+            FileInfo outputInfo, outputInfoRevorb;
+
+            int i = 0;
+
+            Console.WriteLine($"Conversion Output: {OutputDir}");
+
+            foreach (SoundFileProp file in InputReader.soundFileList)
+            {
+                i++;
+                outputPath = Path.Combine(OutputDir, file.relativePath);
+
+                if (!Directory.Exists(outputPath))
+                    Directory.CreateDirectory(outputPath);
+
+                if (InputReader.IsTitleByIDExist(file))
+                {
+                    SongLibraryMetadata trackMetadata = InputReader.GetTrackInfo(file);
+                    filename = $"{trackMetadata.artistName} - {trackMetadata.titleName}";
+                }
+                else
+                {
+                    filename = $"{file.id}";
+                }
+
+                Console.Write($"Converting Track: {i}/{InputReader.soundFileList.Count} {Path.Combine(file.relativePath, $"{filename}.ogg")}...");
+
+                using (Stream rawStream = new MemoryStream())
+                {
+                    outputInfo = new FileInfo(Path.Combine(outputPath, $"{filename}.ogg"));
+                    outputInfoRevorb = new FileInfo(Path.Combine(outputPath, $"{filename}.oggRevorb"));
+
+                    using (Stream outputStream = outputInfo.Create())
+                    {
+                        try
+                        {
+                            InputReader.GetStream(file, rawStream);
+
+                            if (isRAW)
+                            {
+                                rawStream.Seek(0, SeekOrigin.Begin);
+                                rawStream.CopyTo(outputStream);
+                            }
+                            else
+                            {
+                                using (Stream outputRevorbedStream = outputInfoRevorb.Create())
+                                {
+                                    new WEMFile(rawStream).GenerateOGG(outputStream, false, false);
+                                    outputStream.Position = 0;
+                                    RevorbSharp.Convert(outputStream, outputRevorbedStream);
+                                }
+                            }
+
+                            Console.WriteLine($"\b\b\b Done!");
+                        }
+                        catch (ArgumentOutOfRangeException ex)
+                        {
+                            outputStream.Dispose();
+                            outputInfo.Delete();
+                            Console.WriteLine($"\b\b\b Error while converting this one. This might not be an OGG Vorbis format file.\r\n{ex}");
+                        }
+                    }
+
+                    if (!isRAW)
+                    {
+                        outputInfo.Delete();
+                        outputInfoRevorb.MoveTo(outputInfo.FullName);
+                    }
+                }
+            }
+        }
+
         public static void Main(string[] args)
         {
             if (!(args.Length == 0))
             {
+                int startTrack = 1;
                 string[] FileList;
                 WwiseHi3Reader reader;
 
-                FileInfo outputStream;
-                MemoryStream rawStream;
-
                 reader = new WwiseHi3Reader();
 
-                if (args[0].ToLowerInvariant() == "view")
+                switch (args[0].ToLowerInvariant())
                 {
-                    FileList = Directory.GetFiles(args[1], "*.pck", SearchOption.AllDirectories);
-                    reader.Read(FileList, true, true);
-
-                    reader.FilterFileByFolder("sfx");
-                    reader.FilterHighFreqOnly();
-
-                    reader.ListTracks();
-
-                    return;
-                }
-                else if (args[0].ToLowerInvariant() == "convert")
-                {
-                    FileList = Directory.GetFiles(args[1], "*.pck", SearchOption.AllDirectories);
-                    reader.Read(FileList, true, true);
-
-                    reader.FilterFileByFolder("sfx");
-                    reader.FilterHighFreqOnly();
-
-                    string outputFolder = args[2], outputPath, filename;
-
-                    int i = 0;
-
-                    Console.WriteLine($"Conversion Output: {outputFolder}");
-
-                    foreach (SoundFileProp file in reader.FileList)
-                    {
-                        i++;
-                        outputPath = Path.Combine(outputFolder, file.relativePath);
-
-                        if (!Directory.Exists(outputPath))
-                            Directory.CreateDirectory(outputPath);
-
-                        if (reader.IsTitleByIDExist(file))
+                    case "convertraw":
                         {
-                            SongLibraryMetadata trackMetadata = reader.GetTrackInfo(file);
-                            filename = $"{trackMetadata.artistName} - {trackMetadata.titleName}";
+                            if (!string.IsNullOrEmpty(Path.GetExtension(args[1])))
+                                FileList = new string[] { args[1] };
+                            else
+                                FileList = Directory.GetFiles(args[1], "*.*", SearchOption.AllDirectories)
+                                           .Where(file =>
+                                                suppExt
+                                                .Any(x => file
+                                                          .EndsWith(x, StringComparison.OrdinalIgnoreCase))).ToArray();
+
+                            reader.Read(FileList, true
+#if DEBUG
+                                ,false
+#else
+                                , true
+#endif
+                                );
+
+                            // reader.FilterFileByFolder("sfx");
+                            reader.FilterHighFreqOnly();
+
+                            StartConversion(reader, args[2], true);
+                            break;
                         }
+                    case "playnewer":
+                        {
+                            WwiseHi3Reader FileReaderOld = null;
+                            WwiseHi3Reader FileReaderNew = null;
+
+                            LoadAndCompareNewer(args, out FileReaderOld, out FileReaderNew);
+
+                            FileReaderNew.PlayAllStream(1, false);
+                        }
+                        break;
+                    case "convertnewer":
+                        {
+                            WwiseHi3Reader FileReaderOld = null;
+                            WwiseHi3Reader FileReaderNew = null;
+
+                            LoadAndCompareNewer(args, out FileReaderOld, out FileReaderNew);
+
+                            StartConversion(FileReaderNew, args[3]);
+                        }
+                        break;
+                    case "view":
+                        {
+                            if (!string.IsNullOrEmpty(Path.GetExtension(args[1])))
+                                FileList = new string[] { args[1] };
+                            else
+                                FileList = Directory.GetFiles(args[1], "*.*", SearchOption.AllDirectories)
+                                           .Where(file =>
+                                                suppExt
+                                                .Any(x => file
+                                                          .EndsWith(x, StringComparison.OrdinalIgnoreCase))).ToArray();
+
+                            reader.Read(FileList, true, true);
+
+                            // reader.FilterFileByFolder("sfx");
+                            // reader.FilterHighFreqOnly();
+
+                            reader.ListTracks();
+                        }
+                        break;
+                    case "convert":
+                        {
+                            if (!string.IsNullOrEmpty(Path.GetExtension(args[1])))
+                                FileList = new string[] { args[1] };
+                            else
+                                FileList = Directory.GetFiles(args[1], "*.*", SearchOption.AllDirectories)
+                                           .Where(file =>
+                                                suppExt
+                                                .Any(x => file
+                                                          .EndsWith(x, StringComparison.OrdinalIgnoreCase))).ToArray();
+
+                            reader.Read(FileList, true, true);
+
+                            // reader.FilterFileByFolder("sfx");
+                            reader.FilterHighFreqOnly();
+
+                            StartConversion(reader, args[2]);
+                            break;
+                        }
+                    default:
+                        if (!string.IsNullOrEmpty(Path.GetExtension(args[0])))
+                            FileList = new string[] { args[0] };
                         else
+                            FileList = Directory.GetFiles(args[0], "*.*", SearchOption.AllDirectories)
+                                       .Where(file =>
+                                            suppExt
+                                            .Any(x => file
+                                                      .EndsWith(x, StringComparison.OrdinalIgnoreCase))).ToArray();
+
+                        try
                         {
-                            filename = $"{file.id}";
-                        }
-
-                        Console.Write($"Converting Track: {i}/{reader.FileList.Count} {Path.Combine(file.relativePath, $"{filename}.ogg")}...");
-                        rawStream = new MemoryStream();
-
-                        outputStream = new FileInfo(Path.Combine(outputPath, $"{filename}.ogg"));
-
-                        if (!outputStream.Exists)
-                        {
-                            reader.GetStream(file, rawStream);
-                            try
+                            if (args[1].ToLowerInvariant() == "loop")
                             {
-                                new WEMFile(rawStream).GenerateOGG(outputStream.Create(), false, false);
-
-                                Console.WriteLine($"\b\b\b Done!");
+                                reader.PlaySetLoop();
+                                startTrack = int.Parse(args[2]);
                             }
-                            catch (ArgumentOutOfRangeException ex)
+                            else
                             {
-                                outputStream.Delete();
-                                Console.WriteLine($"\b\b\b Error while converting this one. This might not be an OGG Vorbis format file.\r\n{ex}");
+                                startTrack = int.Parse(args[1]);
                             }
                         }
-                        else
-                        {
-                            Console.WriteLine($"\b\b\b Skipping!");
-                        }
+                        catch (IndexOutOfRangeException) { }
 
-                        rawStream.Dispose();
-                    }
+                        reader.Read(FileList, false);
 
-                    return;
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(Path.GetExtension(args[0])))
-                        FileList = new string[] { args[0] };
-                    else
-                        FileList = Directory.GetFiles(args[0], "*.pck", SearchOption.AllDirectories);
+                        // reader.FilterFileByFolder("sx");
+                        // reader.FilterHighFreqOnly();
 
-                    int startTrack = 1;
-
-                    try
-                    {
-                        if (args[1].ToLowerInvariant() == "loop")
-                        {
-                            reader.PlaySetLoop();
-                            startTrack = int.Parse(args[2]);
-                        }
-                        else
-                        {
-                            startTrack = int.Parse(args[1]);
-                        }
-                    }
-                    catch (IndexOutOfRangeException) { }
-
-                    reader.Read(FileList, true);
-
-                    reader.FilterFileByFolder("sfx");
-                    reader.FilterHighFreqOnly();
-
-                    reader.PlayAllStream(startTrack, false);
+                        reader.PlayAllStream(startTrack, false);
+                        break;
                 }
             }
             else

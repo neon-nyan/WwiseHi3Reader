@@ -2,7 +2,7 @@
   "profiles": {
     "WwiseHi3Reader": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\Users\\neon-nyan\\Desktop\\test\\Genshin"
+      "commandLineArgs": "\"C:\\Program Files\\Honkai Impact 3 sea\\Games_ConvertedTo-Hi3SEA\\BH3_Data\\StreamingAssets\\Audio\\GeneratedSoundBanks\\Windows\\AUDIO_BGM_Default.pck\" loop"
     }
   }
 }

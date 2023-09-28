@@ -13,9 +13,9 @@ namespace WwiseHi3Reader
         Hashtable folderHashTable = new Hashtable();
         Hashtable fileHashTable = new Hashtable();
         List<FolderProp> _folders;
-        List<SoundFileProp> soundFileList = new List<SoundFileProp>();
-        List<SoundBankProp> soundBankList = new List<SoundBankProp>();
-        public List<SoundFileProp> FileList;
+        public List<SoundFileProp> soundFileList = new List<SoundFileProp>();
+        public List<SoundBankProp> soundBankList = new List<SoundBankProp>();
+        public Dictionary<uint, SoundFileProp> soundFileDict = new Dictionary<uint, SoundFileProp>();
 
         BinaryReader binaryReader;
         private string magicWord = "AKPK";
@@ -29,11 +29,8 @@ namespace WwiseHi3Reader
             _folders = new List<FolderProp>();
             _header = new HeaderProp();
             _header.pckIndex = 0;
-
-            // Init FileList to soundFileList first;
-            FileList = soundFileList;
         }
-
+         
         uint soundFilePerFileCount;
 
         public void Read(string pckPath, bool skipSoundBank = true, bool quiet = false)
@@ -52,13 +49,40 @@ namespace WwiseHi3Reader
             ReadHeader(skipSoundBank, pckPath);
         }
 
+        public void CompareAndEliminateOldFile(WwiseHi3Reader OldReader)
+        {
+            List<SoundFileProp> NewComparedList = new();
+            Dictionary<uint, SoundFileProp> NewComparedDict = new();
+
+            SoundFileProp OldPropComparer;
+
+            foreach (KeyValuePair<uint, SoundFileProp> Pair in this.soundFileDict)
+            {
+                if (OldReader.soundFileDict.ContainsKey(Pair.Key))
+                {
+                    OldPropComparer = OldReader.soundFileDict[Pair.Key];
+                    if (OldPropComparer.fileSize != Pair.Value.fileSize)
+                    {
+                        NewComparedList.Add(Pair.Value);
+                        NewComparedDict.Add(Pair.Key, Pair.Value);
+                    }
+                }
+            }
+
+            if (NewComparedList.Count != 0)
+            {
+                this.soundFileList = NewComparedList;
+                this.soundFileDict = NewComparedDict;
+            }
+        }
+
         public void ListTracks()
         {
             SoundFileProp list;
-            Console.WriteLine($"Total Track: {FileList.Count}");
-            for (int i = 1; i < FileList.Count + 1; i++)
+            Console.WriteLine($"Total Track: {soundFileList.Count}");
+            for (int i = 1; i < soundFileList.Count + 1; i++)
             {
-                list = FileList[i - 1];
+                list = soundFileList[i - 1];
                 Console.WriteLine($"Track: {i} ID: {list.id} ({list.relativePath}) Offset: {list.fileOffset} Size: {list.fileSize} FreqHz: {list.sampleRate} Ch: {list.channel}");
                 FindTitleByID(list);
             }
@@ -77,6 +101,14 @@ namespace WwiseHi3Reader
         public bool IsTitleByIDExist(in SoundFileProp fileProp) => songLibrary.SongLibraryDictionary.ContainsKey(fileProp.id);
 
         public SongLibraryMetadata GetTrackInfo(in SoundFileProp fileProp) => songLibrary.SongLibraryDictionary[fileProp.id];
+
+        public void ReadEnumerate(IEnumerable<string> pckPaths, bool skipSoundBank = true, bool quiet = false)
+        {
+            foreach (string path in pckPaths)
+            {
+                Read(path, skipSoundBank, quiet);
+            }
+        }
 
         public void Read(string[] pckPaths, bool skipSoundBank = true, bool quiet = false)
         {
@@ -161,6 +193,7 @@ namespace WwiseHi3Reader
                 try
                 {
                     folderHashTable.Add(_folders[i].id, _folders[i].name);
+                    Console.Write($"\r\n    folderKey {_folders[i].name} with ID: {_folders[i].id} added.");
                 }
                 catch (ArgumentException)
                 {
@@ -199,9 +232,9 @@ namespace WwiseHi3Reader
                 uint soundBankSize = binaryReader.ReadUInt32();
                 soundBankProp.headerOffset = binaryReader.ReadUInt32()*soundBankOffsetMult;
                 uint soundBankFolder = binaryReader.ReadUInt32();
-                string soundBankFolderName = (string)folderHashTable[soundBankFolder];
+                string? soundBankFolderName = (string)folderHashTable[soundBankFolder];
                 string pckFileName = filename;
-                soundBankProp.relativePath = Path.Combine(pckFileName, soundBankFolderName, $"Bank_{soundBankProp.id}");
+                soundBankProp.relativePath = Path.Combine(pckFileName, soundBankFolderName ?? "unknown", $"Bank_{soundBankProp.id}");
 
                 uint soundBankTempPos = (uint)binaryReader.BaseStream.Position;
 
@@ -272,26 +305,29 @@ namespace WwiseHi3Reader
                 soundFileProp.fileSize = binaryReader.ReadUInt32();
                 soundFileProp.fileOffset = binaryReader.ReadUInt32() * soundFileOffsetMult;
                 uint soundFileFolder = binaryReader.ReadUInt32();
-                string soundFileFolderName = (string)folderHashTable[soundFileFolder];
+                string? soundFileFolderName = (string)folderHashTable[soundFileFolder];
                 string pckFileName = filename;
-                soundFileProp.relativePath = Path.Combine(pckFileName, soundFileFolderName);
+                soundFileProp.relativePath = Path.Combine(pckFileName, soundFileFolderName ?? "default");
 
                 lastFileOffset = binaryReader.BaseStream.Position;
                 soundFileProp = ReadSoundFileRIFFMetadata(soundFileProp);
                 binaryReader.BaseStream.Position = lastFileOffset;
 
                 soundFileList.Add(soundFileProp);
+                if (!soundFileDict.ContainsKey(soundFileProp.id))
+                {
+                    soundFileDict.Add(soundFileProp.id, soundFileProp);
+                }
                 soundFilePerFileCount++;
             }
         }
 
 #if (NETCOREAPP)
-        public void FilterFileByFolder(string searchValue, StringComparison compareMethod = StringComparison.CurrentCultureIgnoreCase) => FileList = FileList.Where(x => x.relativePath.Contains(searchValue, compareMethod)).ToList();
+        public void FilterFileByFolder(string searchValue, StringComparison compareMethod = StringComparison.CurrentCultureIgnoreCase) => soundFileList = soundFileList.Where(x => x.relativePath.Contains(searchValue, compareMethod)).ToList();
 #else
         public void FilterFileByFolder(string searchValue) => FileList = FileList.Where(x => x.relativePath.Contains(searchValue)).ToList();
 #endif
         public SoundFileProp SelectFileByID(uint id) => soundFileList.FirstOrDefault(x => x.id == id);
-        public void FilterHighFreqOnly() => FileList = FileList.Where(x => x.sampleRate >= 44100 && x.channel >= 2).ToList();
-        public void ResetFilter() => FileList = soundFileList;
+        public void FilterHighFreqOnly() => soundFileList = soundFileList.Where(x => x.sampleRate >= 44100 && x.channel >= 2).ToList();
     }
 }
